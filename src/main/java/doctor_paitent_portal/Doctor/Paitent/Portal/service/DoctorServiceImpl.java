@@ -35,14 +35,31 @@ public class DoctorServiceImpl implements DoctorService {
     @Override
     public Doctor updateDoctor(Long id, Doctor doctor) {
         Doctor existing = getDoctorById(id);
-        existing.setName(doctor.getName());
-        existing.setPhone(doctor.getPhone());
-        existing.setQualification(doctor.getQualification());
-        existing.setSpecialty(doctor.getSpecialty());
-        existing.setExperienceYears(doctor.getExperienceYears());
-        existing.setAbout(doctor.getAbout());
-        existing.setConsultationFee(doctor.getConsultationFee());
-        existing.setLicenseNumber(doctor.getLicenseNumber());
+        if (doctor.getName() != null && !doctor.getName().trim().isEmpty()) {
+            existing.setName(doctor.getName());
+        }
+        if (doctor.getPhone() != null && !doctor.getPhone().trim().isEmpty()) {
+            existing.setPhone(doctor.getPhone());
+        }
+        if (doctor.getQualification() != null && !doctor.getQualification().trim().isEmpty()) {
+            existing.setQualification(doctor.getQualification());
+        }
+        if (doctor.getSpecialty() != null && !doctor.getSpecialty().trim().isEmpty()) {
+            existing.setSpecialty(doctor.getSpecialty());
+        }
+        if (doctor.getExperienceYears() != null) {
+            existing.setExperienceYears(doctor.getExperienceYears());
+        }
+        if (doctor.getAbout() != null && !doctor.getAbout().trim().isEmpty()) {
+            existing.setAbout(doctor.getAbout());
+        }
+        if (doctor.getConsultationFee() != null) {
+            existing.setConsultationFee(doctor.getConsultationFee());
+        }
+        if (doctor.getLicenseNumber() != null && !doctor.getLicenseNumber().trim().isEmpty()) {
+            existing.setLicenseNumber(doctor.getLicenseNumber());
+        }
+
         return doctorRepository.save(existing);
     }
 

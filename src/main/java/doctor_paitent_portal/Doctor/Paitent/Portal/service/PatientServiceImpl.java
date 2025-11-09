@@ -28,14 +28,30 @@ public class PatientServiceImpl implements PatientService {
     @Override
     public Patient updatePatient(Long id, Patient patient) {
         Patient existing = getPatientById(id);
-        existing.setName(patient.getName());
-        existing.setPhone(patient.getPhone());
-        existing.setAddress(patient.getAddress());
-        existing.setEmergencyContact(patient.getEmergencyContact());
-        existing.setMedicalHistory(patient.getMedicalHistory());
-        existing.setBloodGroup(patient.getBloodGroup());
-        existing.setDateOfBirth(patient.getDateOfBirth());
-        existing.setGender(patient.getGender());
+        if (patient.getName() != null && !patient.getName().trim().isEmpty()) {
+            existing.setName(patient.getName());
+        }
+        if (patient.getPhone() != null && !patient.getPhone().trim().isEmpty()) {
+            existing.setPhone(patient.getPhone());
+        }
+        if (patient.getDateOfBirth() != null) {
+            existing.setDateOfBirth(patient.getDateOfBirth());
+        }
+        if (patient.getGender() != null) {
+            existing.setGender(patient.getGender());
+        }
+        if (patient.getBloodGroup() != null && !patient.getBloodGroup().trim().isEmpty()) {
+            existing.setBloodGroup(patient.getBloodGroup());
+        }
+        if (patient.getAddress() != null && !patient.getAddress().trim().isEmpty()) {
+            existing.setAddress(patient.getAddress());
+        }
+        if (patient.getEmergencyContact() != null && !patient.getEmergencyContact().trim().isEmpty()) {
+            existing.setEmergencyContact(patient.getEmergencyContact());
+        }
+        if (patient.getMedicalHistory() != null && !patient.getMedicalHistory().trim().isEmpty()) {
+            existing.setMedicalHistory(patient.getMedicalHistory());
+        }
         return patientRepository.save(existing);
     }
 
