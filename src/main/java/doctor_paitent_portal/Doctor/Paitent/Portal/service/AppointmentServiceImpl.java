@@ -33,30 +33,35 @@ public class AppointmentServiceImpl implements AppointmentService {
         Patient patient = patientRepository.findById(request.getPatientId())
                 .orElseThrow(() -> new RuntimeException("Patient not found"));
 
-        // Check slot availability
-        AvailableSlot slot = slotRepository.findByDoctorIdAndSlotDateAndSlotTime(
-                        doctor.getId(), request.getAppointmentDate(), request.getAppointmentTime())
-                .orElseThrow(() -> new RuntimeException("Requested slot not available"));
+        // ✅ 1. Only pick a free slot
+        AvailableSlot slot = slotRepository
+                .findByDoctorIdAndSlotDateAndSlotTimeAndIsAvailableTrue(
+                        doctor.getId(),
+                        request.getAppointmentDate(),
+                        request.getAppointmentTime()
+                )
+                .orElseThrow(() -> new RuntimeException("Requested slot is not available"));
 
-        if (!slot.getIsAvailable()) {
-            throw new RuntimeException("Requested slot is already booked");
-        }
-
-        // create appointment
+        // ✅ 2. Create appointment
         Appointment appointment = new Appointment();
         appointment.setDoctor(doctor);
         appointment.setPatient(patient);
         appointment.setAppointmentDate(request.getAppointmentDate());
         appointment.setAppointmentTime(request.getAppointmentTime());
         appointment.setReason(request.getReason());
-        appointment.setStatus(Appointment.AppointmentStatus.PENDING);
 
-        // mark slot unavailable
+        // You can use CONFIRMED if you want:
+        appointment.setStatus(Appointment.AppointmentStatus.CONFIRMED);
+        // or keep PENDING depending on your flow:
+        // appointment.setStatus(Appointment.AppointmentStatus.PENDING);
+
+        // ✅ 3. Mark slot unavailable
         slot.setIsAvailable(false);
         slotRepository.save(slot);
 
         return appointmentRepository.save(appointment);
     }
+
 
     @Override
     public List<Appointment> getAppointmentsByDoctor(Long doctorId) {

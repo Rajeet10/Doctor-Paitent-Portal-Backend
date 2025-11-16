@@ -17,4 +17,9 @@ public interface AvailableSlotRepository extends JpaRepository<AvailableSlot, Lo
     List<AvailableSlot> findBySlotDateAndIsAvailableTrue(LocalDate date);
     Optional<AvailableSlot> findByDoctorIdAndSlotDateAndSlotTime(Long doctorId, LocalDate date, LocalTime time);
     List<AvailableSlot> findByDoctorIdAndSlotDateAndIsAvailableTrue(Long doctorId, LocalDate date);
+    Optional<AvailableSlot> findByDoctorIdAndSlotDateAndSlotTimeAndIsAvailableTrue(
+            Long doctorId,
+            LocalDate slotDate,
+            LocalTime slotTime
+    );
 }

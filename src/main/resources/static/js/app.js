@@ -203,6 +203,77 @@ async function loadDoctors() {
     }
 }
 
+// ========== AVAILABLE SLOTS (PATIENT) ==========
+
+async function loadAvailableSlots() {
+    const doctorIdInput = document.getElementById("slot-doctor-id");
+    const dropdown = document.getElementById("available-slots-dropdown");
+    const msg = document.getElementById("slot-message");
+
+    if (!doctorIdInput || !dropdown) {
+        // patient view not visible
+        return;
+    }
+
+    const doctorId = doctorIdInput.value.trim();
+    msg.textContent = "";
+    dropdown.innerHTML = "<option value=''>Loading...</option>";
+
+    if (!doctorId) {
+        dropdown.innerHTML = "<option value=''>Enter Doctor ID first</option>";
+        return;
+    }
+
+    try {
+        const res = await apiFetch(`/api/doctors/${doctorId}/slots`);
+        if (!res.ok) {
+            dropdown.innerHTML = "<option value=''>Failed to load slots</option>";
+            msg.textContent = "Failed to load slots.";
+            return;
+        }
+
+        const slots = await res.json();
+
+        // keep only available ones
+        const available = slots.filter(s => s.isAvailable === true);
+
+        if (available.length === 0) {
+            dropdown.innerHTML = "<option value=''>No available slots</option>";
+            msg.textContent = "No available slots for this doctor.";
+            return;
+        }
+
+        dropdown.innerHTML = "<option value=''>-- Select a Slot --</option>";
+        available.forEach(slot => {
+            const value = `${slot.slotDate}|${slot.slotTime}`;
+            const label = `${slot.slotDate} @ ${slot.slotTime}`;
+            const opt = document.createElement("option");
+            opt.value = value;
+            opt.textContent = label;
+            dropdown.appendChild(opt);
+        });
+    } catch (e) {
+        dropdown.innerHTML = "<option value=''>Error</option>";
+        msg.textContent = "Error loading slots: " + e.message;
+    }
+}
+
+function fillSlotIntoForm() {
+    const dropdown = document.getElementById("available-slots-dropdown");
+    const selected = dropdown ? dropdown.value : "";
+    if (!selected) return;
+
+    const [date, time] = selected.split("|");
+
+    // copy doctor ID from the slot search box
+    const slotDoctorInput = document.getElementById("slot-doctor-id");
+    document.getElementById("appt-doctor-id").value = slotDoctorInput.value;
+
+    document.getElementById("appt-date").value = date;
+    document.getElementById("appt-time").value = time;
+}
+
+
 // ========== APPOINTMENTS (PATIENT) ==========
 
 async function bookAppointment() {

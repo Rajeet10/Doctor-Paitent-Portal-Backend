@@ -85,7 +85,23 @@
         <!-- ========== PATIENT VIEW ========== -->
         <div id="patient-view" class="role-view" style="display:none;">
             <h3>Patient Panel</h3>
+            <div class="card">
+                <h4>Check Available Slots</h4>
 
+                <div class="field">
+                    <label>Select Doctor</label>
+                    <input type="number" id="slot-doctor-id" oninput="loadAvailableSlots()">
+                </div>
+
+                <div class="field">
+                    <label>Available Slots</label>
+                    <select id="available-slots-dropdown" onchange="fillSlotIntoForm()">
+                        <option value="">-- Select a Slot --</option>
+                    </select>
+                </div>
+
+                <p id="slot-message" class="message"></p>
+            </div>
             <div class="card">
                 <h4>Book Appointment</h4>
                 <div class="field">
