@@ -1,5 +1,6 @@
 package doctor_paitent_portal.Doctor.Paitent.Portal.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,6 +17,7 @@ import java.util.List;
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @PrimaryKeyJoinColumn(name = "user_id")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Doctor extends User {
 
     @Column(nullable = false)
@@ -35,11 +37,14 @@ public class Doctor extends User {
     private Double consultationFee;
 
     @OneToMany(mappedBy = "doctor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"doctor", "patient"})
     private List<AvailableSlot> availableSlots = new ArrayList<>();
 
     @OneToMany(mappedBy = "doctor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"doctor", "patient"})
     private List<Appointment> appointments = new ArrayList<>();
 
     @OneToMany(mappedBy = "doctor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"doctor", "patient"})
     private List<MedicalRecord> medicalRecords = new ArrayList<>();
 }

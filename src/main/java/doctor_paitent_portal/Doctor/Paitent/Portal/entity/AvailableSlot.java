@@ -1,5 +1,6 @@
 package doctor_paitent_portal.Doctor.Paitent.Portal.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -21,6 +22,7 @@ public class AvailableSlot {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "doctor_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "appointments", "availableSlots", "medicalRecords"})
     private Doctor doctor;
 
     @Column(nullable = false)

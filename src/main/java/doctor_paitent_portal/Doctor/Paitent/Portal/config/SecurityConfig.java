@@ -65,7 +65,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173")); // frontend origin (Vite)
+        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:8080")); // frontend origin (Vite)
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true); // allows cookies/tokens
@@ -82,7 +82,13 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions().disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/",
+                                "/index.html",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**",
                                 "/api/auth/**",
+                                "/favicon.ico",
                                 "/api/patients/register",
                                 "/api/doctors/register",
                                 "/v3/api-docs/**",
