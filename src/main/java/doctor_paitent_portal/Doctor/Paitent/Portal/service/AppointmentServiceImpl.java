@@ -51,7 +51,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setReason(request.getReason());
 
         // You can use CONFIRMED if you want:
-        appointment.setStatus(Appointment.AppointmentStatus.CONFIRMED);
+        appointment.setStatus(Appointment.AppointmentStatus.PENDING);
         // or keep PENDING depending on your flow:
         // appointment.setStatus(Appointment.AppointmentStatus.PENDING);
 

@@ -180,98 +180,150 @@ function showDashboard() {
 
 async function loadDoctors() {
     const table = document.getElementById("doctors-table");
-    table.innerHTML = "<tr><th>ID</th><th>Name</th><th>Specialty</th><th>Experience</th><th>Fee</th></tr>";
+    const role = localStorage.getItem("userRole");
+
+    // decide header based on role
+    if (role === "PATIENT") {
+        table.innerHTML = `
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Specialty</th>
+                <th>Experience</th>
+                <th>Fee</th>
+                <th>Action</th>
+            </tr>`;
+    } else {
+        table.innerHTML = `
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Specialty</th>
+                <th>Experience</th>
+                <th>Fee</th>
+            </tr>`;
+    }
+
+    const cols = role === "PATIENT" ? 6 : 5;
 
     try {
         const res = await apiFetch("/api/doctors");
         if (!res.ok) {
-            table.innerHTML += `<tr><td colspan="5">Failed to load doctors</td></tr>`;
+            table.innerHTML += `<tr><td colspan="${cols}">Failed to load doctors</td></tr>`;
             return;
         }
+
         const doctors = await res.json();
         doctors.forEach(d => {
-            table.innerHTML += `<tr>
-                <td>${d.id}</td>
-                <td>${d.name}</td>
-                <td>${d.specialty || ""}</td>
-                <td>${d.experienceYears ?? ""}</td>
-                <td>${d.consultationFee ?? ""}</td>
-            </tr>`;
+            if (role === "PATIENT") {
+                table.innerHTML += `
+                    <tr>
+                        <td>${d.id}</td>
+                        <td>${d.name}</td>
+                        <td>${d.specialty || ""}</td>
+                        <td>${d.experienceYears ?? ""}</td>
+                        <td>${d.consultationFee ?? ""}</td>
+                        <td><button onclick="selectDoctorForSlot(${d.id})">View Slots</button></td>
+                    </tr>`;
+            } else {
+                table.innerHTML += `
+                    <tr>
+                        <td>${d.id}</td>
+                        <td>${d.name}</td>
+                        <td>${d.specialty || ""}</td>
+                        <td>${d.experienceYears ?? ""}</td>
+                        <td>${d.consultationFee ?? ""}</td>
+                    </tr>`;
+            }
         });
     } catch (e) {
-        table.innerHTML += `<tr><td colspan="5">Error: ${e.message}</td></tr>`;
+        table.innerHTML += `<tr><td colspan="${cols}">Error: ${e.message}</td></tr>`;
     }
 }
 
-// ========== AVAILABLE SLOTS (PATIENT) ==========
+function selectDoctorForSlot(doctorId) {
+    const slotDoctorInput = document.getElementById("slot-doctor-id");
+    const apptDoctorInput = document.getElementById("appt-doctor-id");
+
+    if (slotDoctorInput) slotDoctorInput.value = doctorId;
+    if (apptDoctorInput) apptDoctorInput.value = doctorId;
+
+    // auto-load slots for today if a date is already chosen
+    loadAvailableSlots();
+}
+
+// ========== AVAILABLE SLOTS (PATIENT VIEW) ==========
 
 async function loadAvailableSlots() {
-    const doctorIdInput = document.getElementById("slot-doctor-id");
-    const dropdown = document.getElementById("available-slots-dropdown");
-    const msg = document.getElementById("slot-message");
+    const doctorId = document.getElementById("slot-doctor-id")?.value;
+    const date = document.getElementById("slot-date")?.value;
+    const table = document.getElementById("available-slots-table");
+    const msg = document.getElementById("slot-check-message");
 
-    if (!doctorIdInput || !dropdown) {
-        // patient view not visible
-        return;
-    }
+    if (!table || !msg) return;
 
-    const doctorId = doctorIdInput.value.trim();
     msg.textContent = "";
-    dropdown.innerHTML = "<option value=''>Loading...</option>";
+    table.innerHTML = "<tr><th>ID</th><th>Date</th><th>Time</th><th>Action</th></tr>";
 
     if (!doctorId) {
-        dropdown.innerHTML = "<option value=''>Enter Doctor ID first</option>";
+        msg.textContent = "Please enter a Doctor ID.";
+        return;
+    }
+    if (!date) {
+        msg.textContent = "Please select a date.";
         return;
     }
 
     try {
         const res = await apiFetch(`/api/doctors/${doctorId}/slots`);
         if (!res.ok) {
-            dropdown.innerHTML = "<option value=''>Failed to load slots</option>";
-            msg.textContent = "Failed to load slots.";
+            table.innerHTML += `<tr><td colspan="4">Failed to load slots</td></tr>`;
             return;
         }
-
         const slots = await res.json();
 
-        // keep only available ones
-        const available = slots.filter(s => s.isAvailable === true);
+        // Filter by selected date & availability
+        const filtered = slots.filter(s => s.slotDate === date && s.isAvailable);
 
-        if (available.length === 0) {
-            dropdown.innerHTML = "<option value=''>No available slots</option>";
-            msg.textContent = "No available slots for this doctor.";
+        if (filtered.length === 0) {
+            table.innerHTML += `<tr><td colspan="4">No available slots for this date.</td></tr>`;
             return;
         }
 
-        dropdown.innerHTML = "<option value=''>-- Select a Slot --</option>";
-        available.forEach(slot => {
-            const value = `${slot.slotDate}|${slot.slotTime}`;
-            const label = `${slot.slotDate} @ ${slot.slotTime}`;
-            const opt = document.createElement("option");
-            opt.value = value;
-            opt.textContent = label;
-            dropdown.appendChild(opt);
+        filtered.forEach(s => {
+            table.innerHTML += `<tr>
+                <td>${s.id}</td>
+                <td>${s.slotDate}</td>
+                <td>${s.slotTime}</td>
+                <td>
+                    <button onclick="chooseSlot('${doctorId}', '${s.slotDate}', '${s.slotTime}')">
+                        Choose
+                    </button>
+                </td>
+            </tr>`;
         });
     } catch (e) {
-        dropdown.innerHTML = "<option value=''>Error</option>";
-        msg.textContent = "Error loading slots: " + e.message;
+        table.innerHTML += `<tr><td colspan="4">Error: ${e.message}</td></tr>`;
     }
 }
 
-function fillSlotIntoForm() {
-    const dropdown = document.getElementById("available-slots-dropdown");
-    const selected = dropdown ? dropdown.value : "";
-    if (!selected) return;
+function chooseSlot(doctorId, date, time) {
+    const apptDoctorInput = document.getElementById("appt-doctor-id");
+    const apptDateInput = document.getElementById("appt-date");
+    const apptTimeInput = document.getElementById("appt-time");
 
-    const [date, time] = selected.split("|");
+    if (apptDoctorInput) apptDoctorInput.value = doctorId;
+    if (apptDateInput) apptDateInput.value = date;
+    if (apptTimeInput) apptTimeInput.value = time;
 
-    // copy doctor ID from the slot search box
-    const slotDoctorInput = document.getElementById("slot-doctor-id");
-    document.getElementById("appt-doctor-id").value = slotDoctorInput.value;
-
-    document.getElementById("appt-date").value = date;
-    document.getElementById("appt-time").value = time;
+    const msg = document.getElementById("appt-message");
+    if (msg) {
+        msg.style.color = "green";
+        msg.textContent = "Slot selected. Now click 'Book' to confirm.";
+    }
 }
+
+
 
 
 // ========== APPOINTMENTS (PATIENT) ==========
@@ -348,17 +400,42 @@ async function loadPatientAppointments() {
 
 async function loadDoctorAppointments() {
     const table = document.getElementById("doctor-appointments-table");
-    table.innerHTML = "<tr><th>ID</th><th>Patient ID</th><th>Date</th><th>Time</th><th>Status</th><th>Reason</th></tr>";
+    table.innerHTML = "<tr>" +
+        "<th>ID</th>" +
+        "<th>Patient ID</th>" +
+        "<th>Date</th>" +
+        "<th>Time</th>" +
+        "<th>Status</th>" +
+        "<th>Reason</th>" +
+        "<th>Actions</th>" +
+        "</tr>";
+
     const doctorId = localStorage.getItem("userId");
 
     try {
         const res = await apiFetch(`/api/appointments/doctor/${doctorId}`);
         if (!res.ok) {
-            table.innerHTML += `<tr><td colspan="6">Failed to load appointments</td></tr>`;
+            table.innerHTML += `<tr><td colspan="7">Failed to load appointments</td></tr>`;
             return;
         }
         const apps = await res.json();
         apps.forEach(a => {
+            // simple logic: what buttons should be enabled for each status
+            const status = a.status;
+            let buttonsHtml = "";
+
+            if (status === "PENDING") {
+                buttonsHtml += `<button onclick="confirmAppointment(${a.id})">Confirm</button> `;
+                buttonsHtml += `<button onclick="cancelAppointmentDoctor(${a.id})">Cancel</button>`;
+            } else if (status === "CONFIRMED") {
+                buttonsHtml += `<button onclick="completeAppointment(${a.id})">Complete</button> `;
+                buttonsHtml += `<button onclick="cancelAppointmentDoctor(${a.id})">Cancel</button>`;
+            } else if (status === "COMPLETED") {
+                buttonsHtml += `<span>Completed</span>`;
+            } else if (status === "CANCELLED") {
+                buttonsHtml += `<span>Cancelled</span>`;
+            }
+
             table.innerHTML += `<tr>
                 <td>${a.id}</td>
                 <td>${a.patient?.id ?? ""}</td>
@@ -366,12 +443,14 @@ async function loadDoctorAppointments() {
                 <td>${a.appointmentTime}</td>
                 <td>${a.status}</td>
                 <td>${a.reason ?? ""}</td>
+                <td>${buttonsHtml}</td>
             </tr>`;
         });
     } catch (e) {
-        table.innerHTML += `<tr><td colspan="6">Error: ${e.message}</td></tr>`;
+        table.innerHTML += `<tr><td colspan="7">Error: ${e.message}</td></tr>`;
     }
 }
+
 
 async function loadAllAppointments() {
     const table = document.getElementById("all-appointments-table");
@@ -403,9 +482,9 @@ async function loadAllAppointments() {
 
 async function addSlot() {
     const doctorId = localStorage.getItem("userId");
-    const date = document.getElementById("slot-date").value;
-    const time = document.getElementById("slot-time").value;
-    const msg = document.getElementById("slot-message");
+    const date = document.getElementById("doctor-slot-date").value;
+    const time = document.getElementById("doctor-slot-time").value;
+    const msg = document.getElementById("doctor-slot-message");
     msg.textContent = "";
 
     if (!date || !time) {
@@ -423,11 +502,13 @@ async function addSlot() {
                 durationMinutes: 30
             })
         });
+
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.success === false) {
             msg.textContent = data.message || "Failed to add slot";
             return;
         }
+
         msg.style.color = "green";
         msg.textContent = "Slot added successfully.";
         loadDoctorSlots();
@@ -461,57 +542,84 @@ async function loadDoctorSlots() {
     }
 }
 
-// ========== MEDICAL RECORDS ==========
+/// ========== MEDICAL RECORDS ==========
 
-async function addMedicalRecord() {
-    const doctorId = parseInt(localStorage.getItem("userId"));
-    const patientId = parseInt(document.getElementById("rec-patient-id").value);
-    const visitDate = document.getElementById("rec-visit-date").value;
-    const symptoms = document.getElementById("rec-symptoms").value;
-    const diagnosis = document.getElementById("rec-diagnosis").value;
-    const prescription = document.getElementById("rec-prescription").value;
-    const msg = document.getElementById("record-message");
-    msg.textContent = "";
+ async function addMedicalRecord() {
+     const doctorId = parseInt(localStorage.getItem("userId"));
+     const patientId = parseInt(document.getElementById("rec-patient-id").value);
+     const visitDate = document.getElementById("rec-visit-date").value;
+     const symptoms = document.getElementById("rec-symptoms").value;
+     const diagnosis = document.getElementById("rec-diagnosis").value;
+     const prescription = document.getElementById("rec-prescription").value;
 
-    if (!patientId || !visitDate) {
-        msg.textContent = "Patient ID and visit date are required.";
-        return;
-    }
+     // 🔹 New optional fields (safe even if inputs are not added yet)
+     const notes = document.getElementById("rec-notes")?.value || null;
+     const bloodPressure = document.getElementById("rec-bp")?.value || null;
+     const temperature = document.getElementById("rec-temp")?.value || null;
+     const heartRate = document.getElementById("rec-hr")?.value || null;
+     const weight = document.getElementById("rec-weight")?.value || null;
 
-    try {
-        const res = await apiFetch("/api/records", {
-            method: "POST",
-            body: JSON.stringify({
-                patientId,
-                doctorId,
-                visitDate,
-                symptoms,
-                diagnosis,
-                prescription
-            })
-        });
+     const msg = document.getElementById("record-message");
+     msg.textContent = "";
 
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.success === false) {
-            msg.textContent = data.message || "Failed to add record";
-            return;
-        }
-        msg.style.color = "green";
-        msg.textContent = "Record added successfully.";
-    } catch (e) {
-        msg.textContent = "Error: " + e.message;
-    }
-}
+     if (!patientId || !visitDate) {
+         msg.textContent = "Patient ID and visit date are required.";
+         return;
+     }
+
+     try {
+         const res = await apiFetch("/api/records", {
+             method: "POST",
+             body: JSON.stringify({
+                 patientId,
+                 doctorId,
+                 visitDate,
+                 symptoms,
+                 diagnosis,
+                 prescription,
+                 notes,
+                 bloodPressure,
+                 temperature,
+                 heartRate,
+                 weight
+             })
+         });
+
+         const data = await res.json().catch(() => ({}));
+         if (!res.ok || data.success === false) {
+             msg.textContent = data.message || "Failed to add record";
+             return;
+         }
+
+         msg.style.color = "green";
+         msg.textContent = "Record added successfully.";
+     } catch (e) {
+         msg.textContent = "Error: " + e.message;
+     }
+ }
+
 
 async function loadPatientRecords() {
     const patientId = localStorage.getItem("userId");
     const table = document.getElementById("patient-records-table");
-    table.innerHTML = "<tr><th>ID</th><th>Doctor ID</th><th>Visit Date</th><th>Diagnosis</th><th>Prescription</th></tr>";
+    table.innerHTML =
+        "<tr>" +
+        "<th>ID</th>" +
+        "<th>Doctor ID</th>" +
+        "<th>Visit Date</th>" +
+        "<th>Diagnosis</th>" +
+        "<th>Prescription</th>" +
+        "<th>Blood Pressure</th>" +
+        "<th>Temp</th>" +
+        "<th>Heart Rate</th>" +
+        "<th>Weight</th>" +
+        "<th>Notes</th>" +
+        "</tr>";
 
     try {
         const res = await apiFetch(`/api/records/patient/${patientId}`);
         if (!res.ok) {
-            table.innerHTML += `<tr><td colspan="5">Failed to load records</td></tr>`;
+            table.innerHTML += `<tr><td colspan="10">Failed to load records</td></tr>`;
             return;
         }
         const records = await res.json();
@@ -522,10 +630,15 @@ async function loadPatientRecords() {
                 <td>${r.visitDate}</td>
                 <td>${r.diagnosis ?? ""}</td>
                 <td>${r.prescription ?? ""}</td>
+                <td>${r.bloodPressure ?? ""}</td>
+                <td>${r.temperature ?? ""}</td>
+                <td>${r.heartRate ?? ""}</td>
+                <td>${r.weight ?? ""}</td>
+                <td>${r.notes ?? ""}</td>
             </tr>`;
         });
     } catch (e) {
-        table.innerHTML += `<tr><td colspan="5">Error: ${e.message}</td></tr>`;
+        table.innerHTML += `<tr><td colspan="10">Error: ${e.message}</td></tr>`;
     }
 }
 
@@ -577,32 +690,65 @@ async function loadPatientCount() {
 async function loadDonors() {
     const table = document.getElementById("donors-table");
     const tableAdmin = document.getElementById("donors-table-admin");
-    if (table) table.innerHTML = "<tr><th>ID</th><th>Name</th><th>Blood Group</th><th>Organs</th><th>City</th><th>State</th></tr>";
-    if (tableAdmin) tableAdmin.innerHTML = "<tr><th>ID</th><th>Name</th><th>Blood Group</th><th>Organs</th><th>City</th><th>State</th></tr>";
+
+    const headerRow = "<tr>" +
+        "<th>ID</th>" +
+        "<th>Name</th>" +
+        "<th>Age</th>" +
+        "<th>Gender</th>" +
+        "<th>Blood Group</th>" +
+        "<th>Organs</th>" +
+        "<th>Contact</th>" +
+        "<th>Email</th>" +
+        "<th>Address</th>" +
+        "<th>City</th>" +
+        "<th>State</th>" +
+        "<th>Medical Conditions</th>" +
+        "</tr>";
+
+    if (table) table.innerHTML = headerRow;
+    if (tableAdmin) tableAdmin.innerHTML = headerRow;
 
     try {
         const res = await apiFetch("/api/donors");
         if (!res.ok) {
-            if (table) table.innerHTML += `<tr><td colspan="6">Failed to load donors</td></tr>`;
-            if (tableAdmin) tableAdmin.innerHTML += `<tr><td colspan="6">Failed to load donors</td></tr>`;
+            const errorRow = `<tr><td colspan="12">Failed to load donors</td></tr>`;
+            if (table) table.innerHTML += errorRow;
+            if (tableAdmin) tableAdmin.innerHTML += errorRow;
             return;
         }
+
         const donors = await res.json();
+        if (!donors.length) {
+            const emptyRow = `<tr><td colspan="12">No donors found</td></tr>`;
+            if (table) table.innerHTML += emptyRow;
+            if (tableAdmin) tableAdmin.innerHTML += emptyRow;
+            return;
+        }
+
         donors.forEach(d => {
             const row = `<tr>
                 <td>${d.id}</td>
                 <td>${d.name}</td>
+                <td>${d.age ?? ""}</td>
+                <td>${d.gender ?? ""}</td>
                 <td>${d.bloodGroup}</td>
                 <td>${d.organsToDonate}</td>
+                <td>${d.contactNumber ?? ""}</td>
+                <td>${d.email ?? ""}</td>
+                <td>${d.address ?? ""}</td>
                 <td>${d.city ?? ""}</td>
                 <td>${d.state ?? ""}</td>
+                <td>${d.medicalConditions ?? ""}</td>
             </tr>`;
+
             if (table) table.innerHTML += row;
             if (tableAdmin) tableAdmin.innerHTML += row;
         });
     } catch (e) {
-        if (table) table.innerHTML += `<tr><td colspan="6">Error: ${e.message}</td></tr>`;
-        if (tableAdmin) tableAdmin.innerHTML += `<tr><td colspan="6">Error: ${e.message}</td></tr>`;
+        const errRow = `<tr><td colspan="12">Error: ${e.message}</td></tr>`;
+        if (table) table.innerHTML += errRow;
+        if (tableAdmin) tableAdmin.innerHTML += errRow;
     }
 }
 
@@ -620,27 +766,53 @@ async function searchDonors() {
 
     const query = qs.length ? "?" + qs.join("&") : "";
     const table = document.getElementById("donors-table");
-    table.innerHTML = "<tr><th>ID</th><th>Name</th><th>Blood Group</th><th>Organs</th><th>City</th><th>State</th></tr>";
+
+    table.innerHTML = "<tr>" +
+        "<th>ID</th>" +
+        "<th>Name</th>" +
+        "<th>Age</th>" +
+        "<th>Gender</th>" +
+        "<th>Blood Group</th>" +
+        "<th>Organs</th>" +
+        "<th>Contact</th>" +
+        "<th>Email</th>" +
+        "<th>Address</th>" +
+        "<th>City</th>" +
+        "<th>State</th>" +
+        "<th>Medical Conditions</th>" +
+        "</tr>";
 
     try {
         const res = await apiFetch(`/api/donors/search${query}`);
         if (!res.ok) {
-            table.innerHTML += `<tr><td colspan="6">Failed to search donors</td></tr>`;
+            table.innerHTML += `<tr><td colspan="12">Failed to search donors</td></tr>`;
             return;
         }
         const donors = await res.json();
+
+        if (!donors.length) {
+            table.innerHTML += `<tr><td colspan="12">No donors found</td></tr>`;
+            return;
+        }
+
         donors.forEach(d => {
             table.innerHTML += `<tr>
                 <td>${d.id}</td>
                 <td>${d.name}</td>
+                <td>${d.age ?? ""}</td>
+                <td>${d.gender ?? ""}</td>
                 <td>${d.bloodGroup}</td>
                 <td>${d.organsToDonate}</td>
+                <td>${d.contactNumber ?? ""}</td>
+                <td>${d.email ?? ""}</td>
+                <td>${d.address ?? ""}</td>
                 <td>${d.city ?? ""}</td>
                 <td>${d.state ?? ""}</td>
+                <td>${d.medicalConditions ?? ""}</td>
             </tr>`;
         });
     } catch (e) {
-        table.innerHTML += `<tr><td colspan="6">Error: ${e.message}</td></tr>`;
+        table.innerHTML += `<tr><td colspan="12">Error: ${e.message}</td></tr>`;
     }
 }
 
@@ -695,6 +867,44 @@ async function registerDonor() {
         msg.textContent = "Error: " + e.message;
     }
 }
+
+async function updateAppointmentStatus(id, status) {
+    try {
+        const res = await apiFetch(`/api/appointments/${id}/status`, {
+            method: "PUT",
+            body: JSON.stringify({ status })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === false) {
+            alert(data.message || "Failed to update status");
+            return;
+        }
+
+        // reload doctor view + admin table (if visible)
+        loadDoctorAppointments();
+        const adminTable = document.getElementById("all-appointments-table");
+        if (adminTable) {
+            loadAllAppointments();
+        }
+    } catch (e) {
+        alert("Error updating status: " + e.message);
+    }
+}
+
+function confirmAppointment(id) {
+    updateAppointmentStatus(id, "CONFIRMED");
+}
+
+function completeAppointment(id) {
+    updateAppointmentStatus(id, "COMPLETED");
+}
+
+function cancelAppointmentDoctor(id) {
+    if (!confirm("Are you sure you want to cancel this appointment?")) return;
+    updateAppointmentStatus(id, "CANCELLED");
+}
+
 
 // ========== ON LOAD ==========
 

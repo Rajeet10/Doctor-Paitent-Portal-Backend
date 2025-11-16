@@ -85,23 +85,25 @@
         <!-- ========== PATIENT VIEW ========== -->
         <div id="patient-view" class="role-view" style="display:none;">
             <h3>Patient Panel</h3>
+
+            <!-- 🔹 Step 1: Check available slots -->
             <div class="card">
                 <h4>Check Available Slots</h4>
-
                 <div class="field">
-                    <label>Select Doctor</label>
-                    <input type="number" id="slot-doctor-id" oninput="loadAvailableSlots()">
+                    <label>Doctor ID</label>
+                    <input type="number" id="slot-doctor-id">
                 </div>
-
                 <div class="field">
-                    <label>Available Slots</label>
-                    <select id="available-slots-dropdown" onchange="fillSlotIntoForm()">
-                        <option value="">-- Select a Slot --</option>
-                    </select>
+                    <label>Date</label>
+                    <input type="date" id="slot-date">
                 </div>
+                <button onclick="loadAvailableSlots()">Check Slots</button>
+                <p id="slot-check-message" class="message"></p>
 
-                <p id="slot-message" class="message"></p>
+                <table id="available-slots-table"></table>
             </div>
+
+            <!-- 🔹 Step 2: Book appointment (can be filled manually or from slot table) -->
             <div class="card">
                 <h4>Book Appointment</h4>
                 <div class="field">
@@ -136,7 +138,6 @@
                 <table id="patient-records-table"></table>
             </div>
         </div>
-
         <!-- ========== DOCTOR VIEW ========== -->
         <div id="doctor-view" class="role-view" style="display:none;">
             <h3>Doctor Panel</h3>
@@ -145,17 +146,18 @@
                 <h4>My Slots</h4>
                 <div class="field">
                     <label>Date</label>
-                    <input type="date" id="slot-date">
+                    <input type="date" id="doctor-slot-date">
                 </div>
                 <div class="field">
                     <label>Time</label>
-                    <input type="time" id="slot-time">
+                    <input type="time" id="doctor-slot-time">
                 </div>
                 <button onclick="addSlot()">Add Slot</button>
-                <p id="slot-message" class="message"></p>
+                <p id="doctor-slot-message" class="message"></p>
                 <button onclick="loadDoctorSlots()">Refresh Slots</button>
                 <table id="doctor-slots-table"></table>
             </div>
+
 
             <div class="card">
                 <h4>My Appointments</h4>
@@ -184,6 +186,32 @@
                 <div class="field">
                     <label>Prescription</label>
                     <input type="text" id="rec-prescription">
+                </div>
+
+                <!-- 🔹 NEW FIELDS ADDED BELOW -->
+                <div class="field">
+                    <label>Blood Pressure</label>
+                    <input type="text" id="rec-bp" placeholder="120/80">
+                </div>
+
+                <div class="field">
+                    <label>Temperature (F)</label>
+                    <input type="number" step="0.1" id="rec-temp" placeholder="98.6">
+                </div>
+
+                <div class="field">
+                    <label>Heart Rate (bpm)</label>
+                    <input type="number" id="rec-hr" placeholder="72">
+                </div>
+
+                <div class="field">
+                    <label>Weight (kg)</label>
+                    <input type="number" step="0.1" id="rec-weight">
+                </div>
+
+                <div class="field">
+                    <label>Notes</label>
+                    <input type="text" id="rec-notes" placeholder="Optional notes">
                 </div>
                 <button onclick="addMedicalRecord()">Save Record</button>
                 <p id="record-message" class="message"></p>

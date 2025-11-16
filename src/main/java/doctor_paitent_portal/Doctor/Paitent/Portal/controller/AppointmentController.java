@@ -13,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/appointments")
@@ -34,6 +35,7 @@ public class AppointmentController {
                     .body(new ApiResponse(false, "Booking failed: " + e.getMessage()));
         }
     }
+
 
     @GetMapping("/doctor/{doctorId}")
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
@@ -60,16 +62,34 @@ public class AppointmentController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
-    public ResponseEntity<?> updateStatus(@PathVariable Long id,
-                                          @RequestParam Appointment.AppointmentStatus status) {
+    public ResponseEntity<?> updateStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body
+    ) {
         try {
+            String statusStr = body.get("status");
+            if (statusStr == null) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse(false, "Missing 'status' field in request body"));
+            }
+
+            Appointment.AppointmentStatus status =
+                    Appointment.AppointmentStatus.valueOf(statusStr);
+
             Appointment updated = appointmentService.updateAppointmentStatus(id, status);
-            return ResponseEntity.ok(new ApiResponse(true, "Appointment status updated successfully", updated));
+
+            return ResponseEntity.ok(
+                    new ApiResponse(true, "Appointment status updated successfully", updated)
+            );
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse(false, "Invalid status value"));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(new ApiResponse(false, "Update failed: " + e.getMessage()));
         }
     }
+
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('PATIENT') or hasRole('DOCTOR') or hasRole('ADMIN')")
