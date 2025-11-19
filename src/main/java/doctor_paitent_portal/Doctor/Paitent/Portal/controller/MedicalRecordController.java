@@ -22,6 +22,7 @@ public class MedicalRecordController {
 
     private final MedicalRecordService recordService;
 
+
     @PostMapping
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<?> addRecord(@Valid @RequestBody MedicalRecordRequest request) {
@@ -76,5 +77,13 @@ public class MedicalRecordController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<MedicalRecord>> getAllRecords() {
         return ResponseEntity.ok(recordService.getAllRecords());
+    }
+
+    @GetMapping("/doctor/{doctorId}/patient/{patientId}")
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
+    public ResponseEntity<List<MedicalRecord>> getRecordsForDoctorAndPatient(
+            @PathVariable Long doctorId,
+            @PathVariable Long patientId) {
+        return ResponseEntity.ok(recordService.getRecordsByDoctorAndPatient(doctorId, patientId));
     }
 }

@@ -12,4 +12,5 @@ public interface MedicalRecordService {
     MedicalRecord getRecordById(Long id);
     MedicalRecord updateRecord(Long id, MedicalRecordRequest request);
     List<MedicalRecord> getAllRecords();
+    List<MedicalRecord> getRecordsByDoctorAndPatient(Long doctorId, Long patientId);
 }

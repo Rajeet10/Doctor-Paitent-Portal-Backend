@@ -57,15 +57,17 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Override
     public MedicalRecord getRecordById(Long id) {
-        return recordRepository.findById(id).orElseThrow(() -> new RuntimeException("Medical record not found"));
+        return recordRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Medical record not found"));
     }
 
     @Override
     public MedicalRecord updateRecord(Long id, MedicalRecordRequest request) {
         MedicalRecord existing = getRecordById(id);
 
-        // update fields that are present in request
-        existing.setVisitDate(request.getVisitDate() != null ? request.getVisitDate() : existing.getVisitDate());
+        existing.setVisitDate(
+                request.getVisitDate() != null ? request.getVisitDate() : existing.getVisitDate()
+        );
         existing.setSymptoms(request.getSymptoms());
         existing.setDiagnosis(request.getDiagnosis());
         existing.setPrescription(request.getPrescription());
@@ -82,5 +84,10 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     @Override
     public List<MedicalRecord> getAllRecords() {
         return recordRepository.findAll();
+    }
+
+    @Override
+    public List<MedicalRecord> getRecordsByDoctorAndPatient(Long doctorId, Long patientId) {
+        return recordRepository.findByDoctorIdAndPatientId(doctorId, patientId);
     }
 }

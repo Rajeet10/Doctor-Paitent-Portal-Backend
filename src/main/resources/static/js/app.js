@@ -1,6 +1,7 @@
 // src/main/resources/static/js/app.js
 
 const API_BASE = ""; // same origin: http://localhost:8080
+let currentPatientIdForDoctor = null;
 
 // ========== UTIL ==========
 
@@ -129,7 +130,6 @@ function showDashboard() {
     const role = localStorage.getItem("userRole");
 
     if (!getToken()) {
-        // not logged in
         document.getElementById("auth-section").style.display = "block";
         document.getElementById("dashboard-section").style.display = "none";
         return;
@@ -138,26 +138,30 @@ function showDashboard() {
     document.getElementById("auth-section").style.display = "none";
     document.getElementById("dashboard-section").style.display = "block";
 
-    // user info
     document.getElementById("user-info").textContent =
         `${name} (${email}) - ${role}`;
 
-    // hide all role views
     document.querySelectorAll(".role-view").forEach(div => div.style.display = "none");
 
-    // show appropriate view
     const title = document.getElementById("dashboard-title");
+    const doctorsCard = document.getElementById("doctors-card");
+
     if (role === "PATIENT") {
         document.getElementById("patient-view").style.display = "block";
         title.textContent = "Patient Dashboard";
+        if (doctorsCard) doctorsCard.style.display = "block";
     } else if (role === "DOCTOR") {
         document.getElementById("doctor-view").style.display = "block";
         title.textContent = "Doctor Dashboard";
+        // 🔴 hide global doctors table for doctors
+        if (doctorsCard) doctorsCard.style.display = "none";
     } else if (role === "ADMIN") {
         document.getElementById("admin-view").style.display = "block";
         title.textContent = "Admin Dashboard";
+        if (doctorsCard) doctorsCard.style.display = "block";
     } else {
         title.textContent = "Dashboard";
+        if (doctorsCard) doctorsCard.style.display = "block";
     }
 
     // initial loads
@@ -169,6 +173,7 @@ function showDashboard() {
     } else if (role === "DOCTOR") {
         loadDoctorAppointments();
         loadDoctorSlots();
+        loadDoctorPatients();   // 🔹 we'll add this function in Step 3
     } else if (role === "ADMIN") {
         loadPatientCount();
         loadAllAppointments();
@@ -542,6 +547,47 @@ async function loadDoctorSlots() {
     }
 }
 
+// ========== DOCTOR: MY PATIENTS ==========
+
+async function loadDoctorPatients() {
+    const doctorId = localStorage.getItem("userId");
+    const table = document.getElementById("doctor-patients-table");
+    if (!table) return;
+
+    table.innerHTML = "<tr><th>Patient ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Action</th></tr>";
+
+    try {
+        const res = await apiFetch(`/api/appointments/doctor/${doctorId}/patients`);
+        if (!res.ok) {
+            table.innerHTML += `<tr><td colspan="5">Failed to load patients</td></tr>`;
+            return;
+        }
+
+        const patients = await res.json();
+        if (!patients.length) {
+            table.innerHTML += `<tr><td colspan="5">No patients found.</td></tr>`;
+            return;
+        }
+
+        patients.forEach(p => {
+            table.innerHTML += `<tr>
+                <td>${p.id}</td>
+                <td>${p.name ?? ""}</td>
+                <td>${p.email ?? ""}</td>
+                <td>${p.phone ?? ""}</td>
+                <td>
+                    <button onclick="loadRecordsForDoctorPatient(${p.id})">
+                        View Records
+                    </button>
+                </td>
+            </tr>`;
+        });
+    } catch (e) {
+        table.innerHTML += `<tr><td colspan="5">Error: ${e.message}</td></tr>`;
+    }
+}
+
+
 /// ========== MEDICAL RECORDS ==========
 
  async function addMedicalRecord() {
@@ -552,7 +598,6 @@ async function loadDoctorSlots() {
      const diagnosis = document.getElementById("rec-diagnosis").value;
      const prescription = document.getElementById("rec-prescription").value;
 
-     // 🔹 New optional fields (safe even if inputs are not added yet)
      const notes = document.getElementById("rec-notes")?.value || null;
      const bloodPressure = document.getElementById("rec-bp")?.value || null;
      const temperature = document.getElementById("rec-temp")?.value || null;
@@ -593,6 +638,22 @@ async function loadDoctorSlots() {
 
          msg.style.color = "green";
          msg.textContent = "Record added successfully.";
+
+         // 🔹 clear inputs (optional)
+         document.getElementById("rec-symptoms").value = "";
+         document.getElementById("rec-diagnosis").value = "";
+         document.getElementById("rec-prescription").value = "";
+         if (document.getElementById("rec-notes")) document.getElementById("rec-notes").value = "";
+         if (document.getElementById("rec-bp")) document.getElementById("rec-bp").value = "";
+         if (document.getElementById("rec-temp")) document.getElementById("rec-temp").value = "";
+         if (document.getElementById("rec-hr")) document.getElementById("rec-hr").value = "";
+         if (document.getElementById("rec-weight")) document.getElementById("rec-weight").value = "";
+
+         // 🔹 if this patient is the selected one in "My Patients", refresh their records table
+         if (currentPatientIdForDoctor && currentPatientIdForDoctor === patientId) {
+             loadRecordsForDoctorPatient(currentPatientIdForDoctor);
+         }
+
      } catch (e) {
          msg.textContent = "Error: " + e.message;
      }
@@ -639,6 +700,68 @@ async function loadPatientRecords() {
         });
     } catch (e) {
         table.innerHTML += `<tr><td colspan="10">Error: ${e.message}</td></tr>`;
+    }
+}
+
+async function loadRecordsForDoctorPatient(patientId) {
+    const doctorId = localStorage.getItem("userId");
+    const table = document.getElementById("doctor-patient-records-table");
+    const msg = document.getElementById("doctor-records-message");
+
+    if (!table || !msg) return;
+
+    // 🔹 remember which patient is selected
+    currentPatientIdForDoctor = patientId;
+
+    // 🔹 auto-fill the Add Medical Record form with this patient
+    const recPatientInput = document.getElementById("rec-patient-id");
+    if (recPatientInput) {
+        recPatientInput.value = patientId;
+    }
+
+    msg.textContent = "";
+    table.innerHTML = `
+        <tr>
+            <th>ID</th>
+            <th>Visit Date</th>
+            <th>Diagnosis</th>
+            <th>Prescription</th>
+            <th>Notes</th>
+            <th>BP</th>
+            <th>Temp</th>
+            <th>HR</th>
+            <th>Weight</th>
+        </tr>`;
+
+    try {
+        const res = await apiFetch(`/api/records/doctor/${doctorId}/patient/${patientId}`);
+        if (!res.ok) {
+            table.innerHTML += `<tr><td colspan="9">Failed to load records</td></tr>`;
+            return;
+        }
+
+        const records = await res.json();
+        if (!records.length) {
+            msg.textContent = "No records found for this patient.";
+            return;
+        }
+
+        records.forEach(r => {
+            table.innerHTML += `
+                <tr>
+                    <td>${r.id}</td>
+                    <td>${r.visitDate ?? ""}</td>
+                    <td>${r.diagnosis ?? ""}</td>
+                    <td>${r.prescription ?? ""}</td>
+                    <td>${r.notes ?? ""}</td>
+                    <td>${r.bloodPressure ?? ""}</td>
+                    <td>${r.temperature ?? ""}</td>
+                    <td>${r.heartRate ?? ""}</td>
+                    <td>${r.weight ?? ""}</td>
+                </tr>`;
+        });
+    } catch (e) {
+        table.innerHTML += `<tr><td colspan="9">Error: ${e.message}</td></tr>`;
     }
 }
 

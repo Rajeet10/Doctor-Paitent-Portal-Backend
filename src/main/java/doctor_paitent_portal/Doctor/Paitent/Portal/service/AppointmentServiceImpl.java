@@ -5,16 +5,15 @@ import doctor_paitent_portal.Doctor.Paitent.Portal.entity.Appointment;
 import doctor_paitent_portal.Doctor.Paitent.Portal.entity.AvailableSlot;
 import doctor_paitent_portal.Doctor.Paitent.Portal.entity.Doctor;
 import doctor_paitent_portal.Doctor.Paitent.Portal.entity.Patient;
-import doctor_paitent_portal.Doctor.Paitent.Portal.repository.AppointmentRepository;
-import doctor_paitent_portal.Doctor.Paitent.Portal.repository.AvailableSlotRepository;
-import doctor_paitent_portal.Doctor.Paitent.Portal.repository.DoctorRepository;
-import doctor_paitent_portal.Doctor.Paitent.Portal.repository.PatientRepository;
-import doctor_paitent_portal.Doctor.Paitent.Portal.service.AppointmentService;
+import doctor_paitent_portal.Doctor.Paitent.Portal.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.ArrayList;
+
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +23,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final DoctorRepository doctorRepository;
     private final PatientRepository patientRepository;
     private final AvailableSlotRepository slotRepository;
+    private final MedicalRecordRepository medicalRecordRepository;
 
     @Override
     @Transactional
@@ -108,4 +108,33 @@ public class AppointmentServiceImpl implements AppointmentService {
     public List<Appointment> getAllAppointments() {
         return appointmentRepository.findAll();
     }
+
+    @Override
+    public List<Patient> getPatientsForDoctor(Long doctorId) {
+        Set<Long> seenIds = new HashSet<>();
+        List<Patient> result = new ArrayList<>();
+
+        // 1️⃣ Patients from appointments
+        List<Patient> fromAppointments = appointmentRepository.findDistinctPatientsByDoctorId(doctorId);
+        if (fromAppointments != null) {
+            for (Patient p : fromAppointments) {
+                if (p != null && seenIds.add(p.getId())) {
+                    result.add(p);
+                }
+            }
+        }
+
+        // 2️⃣ Patients from medical records
+        List<Patient> fromRecords = medicalRecordRepository.findDistinctPatientsByDoctorId(doctorId);
+        if (fromRecords != null) {
+            for (Patient p : fromRecords) {
+                if (p != null && seenIds.add(p.getId())) {
+                    result.add(p);
+                }
+            }
+        }
+
+        return result;
+    }
+
 }

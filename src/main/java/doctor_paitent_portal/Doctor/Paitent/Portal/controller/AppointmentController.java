@@ -4,6 +4,7 @@ package doctor_paitent_portal.Doctor.Paitent.Portal.controller;
 import doctor_paitent_portal.Doctor.Paitent.Portal.dto.ApiResponse;
 import doctor_paitent_portal.Doctor.Paitent.Portal.dto.AppointmentRequest;
 import doctor_paitent_portal.Doctor.Paitent.Portal.entity.Appointment;
+import doctor_paitent_portal.Doctor.Paitent.Portal.entity.Patient;
 import doctor_paitent_portal.Doctor.Paitent.Portal.service.AppointmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -108,4 +109,12 @@ public class AppointmentController {
     public ResponseEntity<List<Appointment>> getAllAppointments() {
         return ResponseEntity.ok(appointmentService.getAllAppointments());
     }
+
+    @GetMapping("/doctor/{doctorId}/patients")
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
+    public ResponseEntity<List<Patient>> getDoctorPatients(@PathVariable Long doctorId) {
+        return ResponseEntity.ok(appointmentService.getPatientsForDoctor(doctorId));
+    }
+
+
 }

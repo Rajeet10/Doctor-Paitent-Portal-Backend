@@ -159,10 +159,22 @@
             </div>
 
 
+
             <div class="card">
                 <h4>My Appointments</h4>
                 <button onclick="loadDoctorAppointments()">Refresh</button>
                 <table id="doctor-appointments-table"></table>
+            </div>
+            <div class="card">
+                <h4>My Patients</h4>
+                <button onclick="loadDoctorPatients()">Refresh Patients</button>
+                <table id="doctor-patients-table"></table>
+            </div>
+
+            <div class="card">
+                <h4>Selected Patient Records</h4>
+                <p id="doctor-records-message" class="message"></p>
+                <table id="doctor-patient-records-table"></table>
             </div>
 
             <div class="card">
@@ -248,7 +260,7 @@
         </div>
 
         <!-- ========== SHARED: DOCTORS TABLE ========== -->
-        <div class="card">
+        <div class="card" id="doctors-card">
             <h3>Doctors</h3>
             <table id="doctors-table"></table>
         </div>
